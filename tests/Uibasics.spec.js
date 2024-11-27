@@ -1,6 +1,6 @@
 import { test } from '@playwright/test';
 
-test.only("Second test", async function({page}){
+test("Second test", async function({page}){
 
     await page.goto("https://rahulshettyacademy.com/loginpagePractise/");
 

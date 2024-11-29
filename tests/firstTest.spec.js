@@ -1,13 +1,16 @@
-const {test}=require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-test("first test", async function({browser}){
+test("test", async function({browser}){
 
     const context= await browser.newContext();
     const page= await context.newPage();
-    await page.goto("https://parabank.parasoft.com/parabank/index.htm");
+    await page.goto("https://rahulshettyacademy.com/loginpagePractise/");
 
-    await page.locator("input[name='username']").fill("sazid")
-    await page.locator("input[name='password']").fill("sazid")
+    await page.locator("input[name='username']").fill("rahulshettyacademy")
+    await page.locator("input[name='password']").fill("learning")
     await page.locator("input[type='submit']").click()
-    // await page.pause()
+    await console.log(page.title());
+    // const title = await page.title();
+    // await expect(title).toContain("ProtoCommerce")
+    await expect(page).toHaveTitle("ProtoCommerce")
 })

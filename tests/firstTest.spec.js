@@ -15,7 +15,7 @@ test("test", async function({browser}){
     await expect(page).toHaveTitle("ProtoCommerce")
 })
 
-test.only("first test with page fixture", async ({page})=>{
+test("first test with page fixture", async ({page})=>{
 
     await page.goto("https://rahulshettyacademy.com/loginpagePractise/");
     await page.locator("div.form-group  input#username").fill("rahulshettyacademy")

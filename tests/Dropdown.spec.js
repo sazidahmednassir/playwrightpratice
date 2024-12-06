@@ -23,7 +23,7 @@ test("Upload File", async({page})=>{
     //https://the-internet.herokuapp.com/upload
 
     await page.goto('https://the-internet.herokuapp.com/upload')
-    await page.setInputFiles("[name='file']", "C:\\Tepkinly Widgets Slc\\Tepkinly Widget - ERES.docx" )
+    await page.setInputFiles("[name='file']", "Tepkinly Widget - ERES.docx" )
     await page.click("[value='Upload']")
     // await page.locator("[name='file']").setInputFiles("C:/Tepkinly Widgets Slc/Tepkinly Widget - ERES.docx")
     

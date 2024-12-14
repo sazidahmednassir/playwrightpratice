@@ -38,6 +38,8 @@ module.exports = defineConfig({
     video: 'on', 
   },
 
+  
+
   /* Configure projects for major browsers */
   projects: [
     {

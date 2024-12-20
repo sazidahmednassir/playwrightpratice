@@ -70,4 +70,19 @@ test("Place Order", async ({ page }) => {
   await page.waitForTimeout(3000);
   await page.locator("[routerlink='/dashboard/myorders']").nth(0).click();
   await page.waitForTimeout(3000);
+  await page.locator("tbody").waitFor();
+  const rows = page.locator("tbody tr");
+  const rowscount = await rows.count();
+
+  for (let k = 0; k < rowscount; k++) {
+    const orderIdText = await rows.nth(k).locator("th").textContent();
+    if (orderId.includes(orderIdText)) {
+      await rows.nth(k).locator("button").first().click();
+      break;
+    }
+  }
+  await page.waitForTimeout(3000);
+  const orderSummaryID = await page.locator("div.col-text").textContent();
+  console.log(orderSummaryID);
+  expect(orderId.includes(orderSummaryID)).toBeTruthy();
 });

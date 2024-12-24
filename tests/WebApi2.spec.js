@@ -1,48 +1,26 @@
-import { test, expect, request } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 const productName = "IPHONE 13 PRO";
-const payload = {
-  userEmail: "sazidahmednx23@yopmail.com",
-  userPassword: "One@500#$",
-};
-let token;
 
-test.beforeAll(async () => {
-  const apiContext = await request.newContext();
-  const loginResponse = await apiContext.post(
-    "https://rahulshettyacademy.com/api/ecom/auth/login",
-    {
-      data: payload,
-    }
-  );
-  // console.log(await loginResponse.json());
-  const loginResponseJson = await loginResponse.json();
-  token = loginResponseJson.token;
-  console.log(token);
+test.beforeAll(async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto("https://rahulshettyacademy.com/client");
+  await page
+    .getByPlaceholder("email@example.com")
+    .fill("sazidahmednx23@yopmail.com");
+  await page.getByPlaceholder("enter your passsword").fill("One@500#$");
+  await page.locator("#login").click();
+  await page.waitForTimeout(2000);
+  await expect(page.getByRole("button", { name: "Home" })).toBeVisible();
+  await context.storageState({ path: "state.json" });
 });
 
-test("Place Order", async ({ page }) => {
-  // const context = await browser.newContext({
-  //   viewport: {
-  //     width: 1920, // Set to your screen's width
-  //     height: 1080, // Set to your screen's height
-  //   },
-  // });
-  // const page = await context.newPage();
-  await page.addInitScript((value) => {
-    window.localStorage.setItem("token", value);
-  }, token);
-  await page.goto("https://rahulshettyacademy.com/client");
-  // await page.pause();
-  // await page
-  //   .getByPlaceholder("email@example.com")
-  //   .fill("sazidahmednx23@yopmail.com");
-  // await page.getByPlaceholder("enter your passsword").fill("One@500#$");
-  // await page.locator("#login").click();
-  await page.waitForTimeout(2000);
+test("Place Order", async ({ browser }) => {
   // await page.pause()
-  await expect(page.getByRole("button", { name: "Home" })).toBeVisible();
-
+  const context = await browser.newContext({ storageState: "state.json" });
+  const page = await context.newPage();
+  await page.goto("https://rahulshettyacademy.com/client");
   const products = page.locator("div.card-body");
   const productTexts = await products.locator("b").allTextContents();
   await products.count();

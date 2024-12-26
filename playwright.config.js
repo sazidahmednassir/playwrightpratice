@@ -1,5 +1,5 @@
 // @ts-check
-const { defineConfig, devices } = require('@playwright/test');
+const { defineConfig, devices } = require("@playwright/test");
 
 /**
  * Read environment variables from file.
@@ -11,8 +11,8 @@ const { defineConfig, devices } = require('@playwright/test');
  * @see https://playwright.dev/docs/test-configuration
  */
 module.exports = defineConfig({
-  testDir: './tests',
-  testMatch: '**/*.spec.js',
+  testDir: "./tests",
+  testMatch: "**/*.spec.js",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -22,7 +22,7 @@ module.exports = defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: [["html"], ["line"], ["allure-playwright"]],
   // timeout: 30*1000,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -30,15 +30,13 @@ module.exports = defineConfig({
     // baseURL: 'http://127.0.0.1:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    
-    trace: 'on-first-retry',
-    headless:true,
-    // browser: 'Google Chrome',
-    screenshot: 'on',
-    video: 'on', 
-  },
 
-  
+    trace: "on",
+    headless: true,
+    browser: "Google Chrome",
+    screenshot: "on",
+    video: "on",
+  },
 
   /* Configure projects for major browsers */
   projects: [
@@ -73,9 +71,9 @@ module.exports = defineConfig({
     //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
     // },
     {
-    name: 'Google Chrome',
-    use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-     },
+      name: "Google Chrome",
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+    },
   ],
 
   /* Run your local dev server before starting the tests */
@@ -85,4 +83,3 @@ module.exports = defineConfig({
   //   reuseExistingServer: !process.env.CI,
   // },
 });
-

@@ -16,12 +16,12 @@ test.beforeEach(async ({ page }) => {
   await mylgpage.launchUrl(url);
 });
 
-test("Check the login valid credentials", async ({ page }) => {
+test("Check the login valid credentials", async () => {
   await mylgpage.validLogin(userEmail, pass);
   await expect(mylgpage.homePageIdetifier).toBeVisible();
 });
 
-test("Check the login invalid credentials", async ({ page }) => {
+test("Check the login invalid credentials", async () => {
   await mylgpage.invalidLogin(invmail, invpass);
   await expect(mylgpage.errorMessage).toHaveText(
     "Incorrect email or password."

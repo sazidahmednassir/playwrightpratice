@@ -1,0 +1,25 @@
+[
+  {
+    "userEmail": "sazidahmednx233@yopmail.com",
+    "pass": "One@500#$",
+    "invalidpass": "1234",
+    "productName": "IPHONE 13 PRO",
+    "url": "https://rahulshettyacademy.com/client"
+  },
+
+  {
+    "userEmail": "sazidahmednx21@yopmail.com",
+    "pass": "One@500#$",
+    "invalidpass": "1234",
+    "productName": "IPHONE 13 PRO",
+    "url": "https://rahulshettyacademy.com/client"
+  },
+
+  {
+    "userEmail": "sazidahmednx26@yopmail.com",
+    "pass": "One@500#$",
+    "invalidpass": "1234",
+    "productName": "IPHONE 13 PRO",
+    "url": "https://rahulshettyacademy.com/client"
+  }
+]

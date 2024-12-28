@@ -2,12 +2,7 @@ import { test, expect } from "@playwright/test";
 import { LoginPage } from "../pageObjects/LoginPage";
 import { Dashboard } from "../pageObjects/Dashboard";
 
-const userEmail = "sazidahmednx23@yopmail.com";
-const pass = "One@500#$";
-
-const url = "https://rahulshettyacademy.com/client";
-
-const productName = "IPHONE 13 PRO";
+const data = JSON.parse(JSON.stringify(require("../utils/logindata.json")));
 
 let mylgpage;
 let dashboard;
@@ -15,16 +10,16 @@ let dashboard;
 test.beforeEach(async ({ page }) => {
   mylgpage = new LoginPage(page);
   dashboard = new Dashboard(page);
-  await mylgpage.launchUrl(url);
-  await mylgpage.validLogin(userEmail, pass);
+  await mylgpage.launchUrl(data.url);
+  await mylgpage.validLogin(data.userEmail, data.pass);
 });
 
 test("Add to Cart", async () => {
-  await dashboard.searchAddtoCart(productName);
+  await dashboard.searchAddtoCart(data.productName);
   await expect(dashboard.addToCartToast).toHaveText("Product Added To Cart");
 });
 
 test("View Product Details", { tag: ["@smoke", "@regression"] }, async () => {
-  await dashboard.searchProductAndViewDetails(productName);
-  await expect(dashboard.viewPageProductName).toHaveText(productName);
+  await dashboard.searchProductAndViewDetails(data.productName);
+  await expect(dashboard.viewPageProductName).toHaveText(data.productName);
 });

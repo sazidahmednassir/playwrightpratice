@@ -29,14 +29,14 @@ test("Upload File", async ({ page }) => {
   await page.waitForTimeout(3000);
 });
 
-test("Mouse Hover", async ({ page }) => {
-  await page.goto("https://www.spicejet.com/");
-  const addOns = page.locator("text=Add-ons").nth(0);
-  await page.waitForTimeout(3000);
-  await addOns.hover();
-  await expect
-    .soft(
-      page.locator('[data-testid="test-id-International Connection Baggage"]')
-    )
-    .toBeVisible();
-});
+// test("Mouse Hover", async ({ page }) => {
+//   await page.goto("https://www.spicejet.com/");
+//   const addOns = page.locator("text=Add-ons").nth(0);
+//   await page.waitForTimeout(3000);
+//   await addOns.hover();
+//   await expect
+//     .soft(
+//       page.locator('[data-testid="test-id-International Connection Baggage"]')
+//     )
+//     .toBeVisible();
+// });

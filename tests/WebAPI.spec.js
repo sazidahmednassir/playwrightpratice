@@ -77,7 +77,7 @@ test("Place Order", async ({ page }) => {
   const dropdownsvalues = page.locator(".ta-results button");
   await dropdownsvalues.first().waitFor();
   const countdrop = await dropdownsvalues.count();
-  await page.waitForTimeout(3000);
+  // await page.waitForTimeout(3000);
 
   const countyval = " India";
   for (let j = 0; j < countdrop; j++) {

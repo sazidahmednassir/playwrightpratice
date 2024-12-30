@@ -16,7 +16,7 @@ test.beforeAll(async ({ browser }) => {
   await context.storageState({ path: "state.json" });
 });
 
-test("Place Order", async ({ browser }) => {
+test("Place Order", { tag: "@API" }, async ({ browser }) => {
   // await page.pause()
   const context = await browser.newContext({ storageState: "state.json" });
   const page = await context.newPage();

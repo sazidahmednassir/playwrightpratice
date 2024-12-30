@@ -36,6 +36,10 @@ module.exports = defineConfig({
     browser: "Google Chrome",
     screenshot: "on",
     video: "on",
+    launchOptions: {
+      // 1
+      args: ["--start-maximized"],
+    },
   },
 
   /* Configure projects for major browsers */
@@ -72,7 +76,10 @@ module.exports = defineConfig({
     // },
     {
       name: "Google Chrome",
-      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+      use: {
+        // ...devices["Desktop Chrome"], channel: "chrome"
+        viewport: null,
+      },
     },
   ],
 

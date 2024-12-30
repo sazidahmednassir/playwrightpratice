@@ -40,7 +40,7 @@ test.beforeAll(async () => {
   orderId = await orderresjson.orders[0];
 });
 
-test("Place Order", async ({ page }) => {
+test("Place Order", { tag: "@API" }, async ({ page }) => {
   // const context = await browser.newContext({
   //   viewport: {
   //     width: 1920, // Set to your screen's width

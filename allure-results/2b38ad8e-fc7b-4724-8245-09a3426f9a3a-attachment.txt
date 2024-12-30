@@ -1,0 +1,10 @@
+[
+  'ADIDAS ORIGINAL',
+  'IPHONE 13 PRO',
+  'qwerty',
+  'Banarsi Saree',
+  'LG Refrigerator',
+  'LG Refrigerator'
+]
+ | 67724ff3e2b5443b1f094fe0 | 
+67724ff3e2b5443b1f094fe0

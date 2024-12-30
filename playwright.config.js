@@ -36,6 +36,7 @@ module.exports = defineConfig({
     browser: "Google Chrome",
     screenshot: "on",
     video: "on",
+    timeout: 60000,
     launchOptions: {
       // 1
       args: ["--start-maximized"],

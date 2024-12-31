@@ -1,0 +1,1 @@
+✔ Custom Pass: Register button type attribute is correctly set to "submit".

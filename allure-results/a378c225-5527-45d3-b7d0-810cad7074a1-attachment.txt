@@ -1,0 +1,8 @@
+[
+  'ADIDAS ORIGINAL',
+  'IPHONE 13 PRO',
+  'qwerty',
+  'Banarsi Saree',
+  'LG Refrigerator',
+  'LG Refrigerator'
+]

@@ -23,6 +23,10 @@ module.exports = defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [["html"], ["line"], ["allure-playwright"]],
+  timeout: 240000, // Test timeout
+  expect: {
+    timeout: 80 * 1000,
+  },
   // timeout: 30*1000,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {

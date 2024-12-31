@@ -85,5 +85,5 @@ for (const record of records) {
 
 /*
 "fulltest": "npx playwright test",
-    "smoke": "npx playwright test --grep @smoke",
-    "regression": "npx playwright test --grep @regression" */
+"smoke": "npx playwright test --grep @smoke",
+"regression": "npx playwright test --grep @regression" */

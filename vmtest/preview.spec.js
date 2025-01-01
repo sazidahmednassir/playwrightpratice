@@ -82,8 +82,3 @@ for (const record of records) {
     // Validate the page title
   });
 }
-
-/*
-"fulltest": "npx playwright test",
-"smoke": "npx playwright test --grep @smoke",
-"regression": "npx playwright test --grep @regression" */

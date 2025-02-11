@@ -218,10 +218,6 @@ jobs:
           npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
         continue-on-error: true # Ensure next steps run even if tests fail
 
-      - name: Debug Test Results JSON
-        run: |
-          cat test-results.json # Print the JSON output for debugging purposes
-
       - name: Parse Test Results
         run: |
           TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
@@ -230,7 +226,7 @@ jobs:
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
           # Extract all failed test case names and their file names (JavaScript)
-          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[]?.status=="failed") | {file: .file, test_name: .title}] | .[] | "\(.file): \(.test_name)"' test-results.json)
+          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[]?.status=="failed") | "\(.file): \(.title)"] | .[]' test-results.json)
 
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV

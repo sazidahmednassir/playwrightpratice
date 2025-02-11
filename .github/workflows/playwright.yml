@@ -109,6 +109,79 @@
 #           to: "sazidahmednassir@gmail.com" # Replace with the actual recipient email
 #           from: "${{ secrets.EMAIL_USERNAME }}"
 
+# only it is working as expected
+# name: Playwright Tests with Summary Report
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
+#   schedule:
+#     - cron: "0 0 * * *" # Run every midnight UTC
+
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+
+#       - name: Install dependencies
+#         run: npm ci
+
+#       - name: Install Playwright browsers
+#         run: npx playwright install --with-deps
+
+#       - name: Run Playwright Tests and Save Results
+#         run: npx playwright test --reporter=json > test-results.json
+
+#       - name: Parse Test Results
+#         run: |
+#           TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
+#           PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
+#           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
+#           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
+
+#           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
+#           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
+#           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
+#           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
+
+#       - name: Send Email with Test Results
+#         uses: dawidd6/action-send-mail@v3
+#         with:
+#           server_address: smtp.gmail.com
+#           server_port: 465
+#           username: ${{ secrets.EMAIL_USERNAME }}
+#           password: ${{ secrets.EMAIL_PASSWORD }}
+#           subject: "Playwright Test Results"
+#           body: |
+#             ✅ **Test Run Summary:**
+
+#             - ✅ Passed: ${{ env.PASSED_TESTS }}
+#             - ❌ Failed: ${{ env.FAILED_TESTS }}
+#             - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
+#             - 📊 Total: ${{ env.TOTAL_TESTS }}
+
+#             📌 **Run Details:**
+#             - Repository: ${{ github.repository }}
+#             - Branch: ${{ github.ref_name }}
+#             - Commit: ${{ github.sha }}
+#             - Workflow Run: ${{ github.run_id }}
+#             - [View Full GitHub Actions Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+#           to: "sazidahmednassir@gmail.com"
+#           from: ${{ secrets.EMAIL_USERNAME }}
+
 name: Playwright Tests with Summary Report
 
 on:
@@ -150,10 +223,16 @@ jobs:
           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
+          # Extract failed test case file names
+          FAILED_FILES=$(jq -r '[.suites[].specs[] | select(.tests[].results[].status=="failed") | .file] | unique | join("\n")' test-results.json)
+
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
+          echo "FAILED_FILES<<EOF" >> $GITHUB_ENV
+          echo "$FAILED_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Send Email with Test Results
         uses: dawidd6/action-send-mail@v3
@@ -170,6 +249,9 @@ jobs:
             - ❌ Failed: ${{ env.FAILED_TESTS }}  
             - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}  
             - 📊 Total: ${{ env.TOTAL_TESTS }}  
+
+            📌 **Failed Test Files:**  
+            ${{ env.FAILED_FILES }}  
 
             📌 **Run Details:**  
             - Repository: ${{ github.repository }}  

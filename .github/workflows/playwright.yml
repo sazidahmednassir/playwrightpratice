@@ -109,7 +109,7 @@
 #           to: "sazidahmednassir@gmail.com" # Replace with the actual recipient email
 #           from: "${{ secrets.EMAIL_USERNAME }}"
 
-name: Playwright Tests with Allure Reports
+name: Playwright Tests with Summary Report
 
 on:
   push:
@@ -140,63 +140,43 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Install Allure Command Line Tool
-        run: npm install -g allure-commandline --save-dev
+      - name: Run Playwright Tests and Save Results
+        run: npx playwright test --reporter=json > test-results.json
 
-      - name: Run Playwright tests with Allure
-        run: npx playwright test --reporter=allure-playwright
-        continue-on-error: true # Prevents stopping the workflow if tests fail
-
-      - name: Generate Allure Report
-        if: always() # Ensures this step runs even if previous steps fail
+      - name: Parse Test Results
         run: |
-          if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
-            npx allure generate allure-results --clean -o allure-report
-            echo "Allure report generated successfully."
-          else
-            echo "No Allure results found, skipping report generation."
-          fi
+          TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
+          PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
+          FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
+          SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-      - name: Upload Allure Report Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report/
-          retention-days: 30
+          echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
+          echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
+          echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
+          echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
 
-      - name: Deploy Allure Report to GitHub Pages
-        if: always() # Ensure deployment even if tests fail
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: allure-report # Directory containing the Allure report
-          clean: true
-          token: ${{ secrets.GITHUB_TOKEN }} # ✅ Add GitHub token for deployment
-
-      - name: Send Email with Allure Report Link
-        if: always()
+      - name: Send Email with Test Results
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Allure Report for Playwright Tests"
+          subject: "Playwright Test Results"
           body: |
-            The Playwright test run has completed.
+            ✅ **Test Run Summary:**  
 
-            🔗 **Allure Report Download Link:**  
-            👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            🌐 **View Allure Report Online:**  
-            👉 [Click here to view the Allure report on GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)
+            - ✅ Passed: ${{ env.PASSED_TESTS }}  
+            - ❌ Failed: ${{ env.FAILED_TESTS }}  
+            - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}  
+            - 📊 Total: ${{ env.TOTAL_TESTS }}  
 
             📌 **Run Details:**  
             - Repository: ${{ github.repository }}  
             - Branch: ${{ github.ref_name }}  
             - Commit: ${{ github.sha }}  
-            - Workflow Run: ${{ github.run_id }}
+            - Workflow Run: ${{ github.run_id }}  
+            - [View Full GitHub Actions Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
           to: "sazidahmednassir@gmail.com"
-          from: ${{ secrets.EMAIL_USERNAME }} # ✅ Remove extra quotes
+          from: ${{ secrets.EMAIL_USERNAME }}

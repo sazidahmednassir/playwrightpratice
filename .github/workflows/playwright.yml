@@ -63,8 +63,8 @@ jobs:
       - name: Run Playwright tests with Allure
         run: npx playwright test --reporter=allure-playwright
 
-      - name: Debug Allure Results
-        run: ls -R allure-results
+      # - name: Debug Allure Results
+      #   run: ls -R allure-results
 
       - name: Generate Allure Report
         run: |

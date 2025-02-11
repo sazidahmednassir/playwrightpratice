@@ -225,7 +225,7 @@ jobs:
           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-          # Extract all failed test case names and their file names
+          # Extract all failed test case names and their file names (JavaScript)
           FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | {file: .file, test_name: .title}] | .[] | "\(.file): \(.test_name)"' test-results.json)
 
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV

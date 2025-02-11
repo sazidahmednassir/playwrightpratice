@@ -227,9 +227,9 @@ jobs:
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
           # Extract failed test case names and file names safely
-          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | .file + ": " + .title] | join("\n")' test-results.json)
+          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | .file + ": " + .title] | join("\n") // "No failed tests"' test-results.json)
 
-          # Handle empty list of failed tests
+          # Handle empty list of failed tests (fallback to a message if empty)
           if [ -z "$FAILED_TESTS" ]; then
             FAILED_TESTS="No failed tests"
           fi

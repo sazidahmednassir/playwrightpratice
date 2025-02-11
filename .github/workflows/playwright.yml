@@ -145,30 +145,36 @@ jobs:
 
       - name: Run Playwright tests with Allure
         run: npx playwright test --reporter=allure-playwright
-        continue-on-error: true # ✅ Prevents stopping the workflow if tests fail
+        continue-on-error: true # Prevents stopping the workflow if tests fail
 
       - name: Generate Allure Report
-        if: always() # ✅ Ensures this step runs even if previous steps fail
+        if: always() # Ensures this step runs even if previous steps fail
         run: |
           if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
             npx allure generate allure-results --clean -o allure-report
-            cd allure-report
-            zip -r ../allure-report.zip . # ✅ Correct zipping method
-            cd ..
+            echo "Allure report generated successfully."
           else
             echo "No Allure results found, skipping report generation."
           fi
 
       - name: Upload Allure Report Artifact
-        if: always() # ✅ Ensures this step runs even if previous steps fail
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
           path: allure-report/
           retention-days: 30
 
+      - name: Deploy Allure Report to GitHub Pages
+        if: always() # Ensure deployment even if tests fail
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: allure-report # Directory containing the Allure report
+          clean: true
+
       - name: Send Email with Allure Report Link
-        if: always() # ✅ Ensures this step runs even if previous steps fail
+        if: always()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -183,7 +189,7 @@ jobs:
             👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
             🌐 **View Allure Report Online:**  
-            👉 [Click here to view the Allure report on GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.repository }}/allure-report/)
+            👉 [Click here to view the Allure report on GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.repository }}/)
 
             📌 **Run Details:**  
             - Repository: ${{ github.repository }}  
@@ -191,14 +197,5 @@ jobs:
             - Commit: ${{ github.sha }}  
             - Workflow Run: ${{ github.run_id }}
 
-          to: "sazidahmednassir@gmail.com" # Replace with the actual recipient email
+          to: "sazidahmednassir@gmail.com"
           from: "${{ secrets.EMAIL_USERNAME }}"
-
-      - name: Deploy Allure Report to GitHub Pages from Main Branch
-        if: always() # ✅ Deploy report even if tests fail
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./allure-report # Directory containing the generated Allure report
-          target_branch: main # Deploy directly to the main branch for GitHub Pages
-          destination_dir: allure-report # Specify the directory where report will be placed in the main branch

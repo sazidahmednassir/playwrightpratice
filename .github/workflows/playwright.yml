@@ -142,7 +142,9 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright Tests and Save Results
-        run: npx playwright test --reporter=json > test-results.json
+        run: |
+          npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
+        continue-on-error: true # Allow workflow to continue even if tests fail
 
       - name: Parse Test Results
         run: |
@@ -181,3 +183,7 @@ jobs:
 
           to: "sazidahmednassir@gmail.com"
           from: ${{ secrets.EMAIL_USERNAME }}
+
+      - name: Fail Workflow if Tests Failed
+        if: env.TEST_FAILED == 'true'
+        run: exit 1

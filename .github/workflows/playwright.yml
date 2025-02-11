@@ -26,6 +26,89 @@
 #         path: playwright-report/
 #         retention-days: 30
 
+# only generate allure report
+# name: Playwright Tests with Allure Reports
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
+#   schedule:
+#     - cron: "0 0 * * *" # Run every midnight UTC
+
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+
+#       - name: Install dependencies
+#         run: npm ci
+
+#       - name: Install Playwright browsers
+#         run: npx playwright install --with-deps
+
+#       - name: Install Allure Command Line Tool
+#         run: npm install -g allure-commandline --save-dev
+
+#       - name: Run Playwright tests with Allure
+#         run: npx playwright test --reporter=allure-playwright
+#         continue-on-error: true # ✅ Prevents stopping the workflow if tests fail
+
+#       - name: Generate Allure Report
+#         if: always() # ✅ Ensures this step runs even if previous steps fail
+#         run: |
+#           if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
+#             npx allure generate allure-results --clean -o allure-report
+#             cd allure-report
+#             zip -r ../allure-report.zip . # ✅ Correct zipping method
+#             cd ..
+#           else
+#             echo "No Allure results found, skipping report generation."
+#           fi
+
+#       - name: Upload Allure Report Artifact
+#         if: always() # ✅ Ensures this step runs even if previous steps fail
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: allure-report
+#           path: allure-report/
+#           retention-days: 30
+
+#       - name: Send Email with Allure Report Link
+#         if: always() # ✅ Ensures this step runs even if previous steps fail
+#         uses: dawidd6/action-send-mail@v3
+#         with:
+#           server_address: smtp.gmail.com
+#           server_port: 465
+#           username: ${{ secrets.EMAIL_USERNAME }}
+#           password: ${{ secrets.EMAIL_PASSWORD }}
+#           subject: "Allure Report for Playwright Tests"
+#           body: |
+#             The Playwright test run has completed.
+
+#             🔗 **Allure Report Download Link:**
+#             👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+#             📌 **Run Details:**
+#             - Repository: ${{ github.repository }}
+#             - Branch: ${{ github.ref_name }}
+#             - Commit: ${{ github.sha }}
+#             - Workflow Run: ${{ github.run_id }}
+
+#           to: "sazidahmednassir@gmail.com" # Replace with the actual recipient email
+#           from: "${{ secrets.EMAIL_USERNAME }}"
+
 name: Playwright Tests with Allure Reports
 
 on:
@@ -99,6 +182,9 @@ jobs:
             🔗 **Allure Report Download Link:**  
             👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
+            🌐 **View Allure Report Online:**  
+            👉 [Click here to view the Allure report on GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.repository }}/allure-report/)
+
             📌 **Run Details:**  
             - Repository: ${{ github.repository }}  
             - Branch: ${{ github.ref_name }}  
@@ -107,3 +193,10 @@ jobs:
 
           to: "sazidahmednassir@gmail.com" # Replace with the actual recipient email
           from: "${{ secrets.EMAIL_USERNAME }}"
+
+      - name: Deploy Allure Report to GitHub Pages (Optional)
+        if: always() # ✅ Deploy report even if tests fail
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report

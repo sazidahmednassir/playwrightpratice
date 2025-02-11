@@ -186,4 +186,5 @@ jobs:
 
       - name: Fail Workflow if Tests Failed
         if: env.TEST_FAILED == 'true'
-        run: exit 1
+        run: echo "Test execution had failures, marking job as failed." && exit 1
+        continue-on-error: true

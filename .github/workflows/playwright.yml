@@ -63,6 +63,7 @@ jobs:
       - name: Run Playwright tests with Allure
         run: npx playwright test --reporter=allure-playwright
 
+      # Debugging: Uncomment if you need to inspect Allure results
       # - name: Debug Allure Results
       #   run: ls -R allure-results
 
@@ -79,9 +80,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
-          path: allure-report.zip
+          path: allure-report/
+          retention-days: 30
 
-      - name: Send Email with Allure Report
+      - name: Send Email with Allure Report Link
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -89,7 +91,17 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Report for Playwright Tests"
-          body: "Find the attached Allure report for the latest test run."
-          to: "sazidahmednassir@gmail.com"
+          body: |
+            The Playwright test run has completed.  
+
+            🔗 **Allure Report Download Link:**  
+            👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            📌 **Run Details:**  
+            - Repository: ${{ github.repository }}  
+            - Branch: ${{ github.ref_name }}  
+            - Commit: ${{ github.sha }}  
+            - Workflow Run: ${{ github.run_id }}
+
+          to: "sazidahmednassir@gmail.com" # Replace with the actual recipient email
           from: "${{ secrets.EMAIL_USERNAME }}"
-          attachments: allure-report.zip

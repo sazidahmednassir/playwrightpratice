@@ -226,12 +226,12 @@ jobs:
           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-          # Extract failed test case names and file names safely
-          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | .file + ": " + .title] | join("\n") // "No failed tests"' test-results.json)
+          # Extract failed test case files only (without specific test case names)
+          FAILED_FILES=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | .file] | unique | join("\n")' test-results.json)
 
-          # Handle empty list of failed tests (fallback to a message if empty)
-          if [ -z "$FAILED_TESTS" ]; then
-            FAILED_TESTS="No failed tests"
+          # Handle empty list of failed files
+          if [ -z "$FAILED_FILES" ]; then
+            FAILED_FILES="No failed test files"
           fi
 
           # Save results to GitHub Actions environment variables
@@ -239,7 +239,7 @@ jobs:
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-          echo "FAILED_TESTS_LIST=$FAILED_TESTS" >> $GITHUB_ENV
+          echo "FAILED_TEST_FILES=$FAILED_FILES" >> $GITHUB_ENV
 
       - name: Send Email with Test Results
         if: always() # Run even if previous steps fail
@@ -258,8 +258,8 @@ jobs:
             - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}  
             - 📊 Total: ${{ env.TOTAL_TESTS }}  
 
-            📌 **Failed Test Cases:**  
-            ${{ env.FAILED_TESTS_LIST }}  
+            📌 **Failed Test Files:**  
+            ${{ env.FAILED_TEST_FILES }}  
 
             📌 **Run Details:**  
             - Repository: ${{ github.repository }}  

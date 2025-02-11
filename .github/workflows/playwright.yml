@@ -92,7 +92,7 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Report for Playwright Tests"
           body: |
-            The Playwright test run has completed.  
+            The Playwright test run has completed. **Test Status:** ${{ env.TEST_STATUS }}
 
             🔗 **Allure Report Download Link:**  
             👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

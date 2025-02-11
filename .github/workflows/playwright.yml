@@ -36,7 +36,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 0 * * *" # Schedule it to run every Sunday at midnight UTC
+    - cron: "0 0 * * *" # Run every midnight UTC
 
 jobs:
   test:
@@ -57,13 +57,23 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run Playwright tests with Allure
-        run: npx playwright test --reporter=line,allure-playwright
+      - name: Install Allure Command Line Tool
+        run: npm install -g allure-commandline --save-dev
 
-      - name: Generate Allure report
+      - name: Run Playwright tests with Allure
+        run: npx playwright test --reporter=allure-playwright
+
+      - name: Debug Allure Results
+        run: ls -R allure-results
+
+      - name: Generate Allure Report
         run: |
-          npx allure generate allure-results --clean -o allure-report
-          zip -r allure-report.zip allure-report
+          if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
+            npx allure generate allure-results --clean -o allure-report
+            zip -r allure-report.zip allure-report
+          else
+            echo "No Allure results found, skipping report generation."
+          fi
 
       - name: Upload Allure Report Artifact
         uses: actions/upload-artifact@v4
@@ -80,6 +90,6 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Report for Playwright Tests"
           body: "Find the attached Allure report for the latest test run."
-          to: "recipient@example.com" # Replace with the actual recipient email
-          from: "${{ secrets.EMAIL_USERNAME }}" # Use the GitHub secret for the sender's email
+          to: "sazidahmednassir@gmail.com"
+          from: "${{ secrets.EMAIL_USERNAME }}"
           attachments: allure-report.zip

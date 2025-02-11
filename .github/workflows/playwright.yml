@@ -220,21 +220,20 @@ jobs:
 
       - name: Parse Test Results
         run: |
+          # Total test count
           TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
           PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-          # Extract all failed test case names and their file names (JavaScript)
-          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[]?.status=="failed") | "\(.file): \(.title)"] | .[]' test-results.json)
+          # Extract failed test case names and file names
+          FAILED_TESTS=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | "\(.file): \(.title)"] | join("\n")' test-results.json)
 
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-          echo "FAILED_TESTS_LIST<<EOF" >> $GITHUB_ENV
-          echo "$FAILED_TESTS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "FAILED_TESTS_LIST=$FAILED_TESTS" >> $GITHUB_ENV
 
       - name: Send Email with Test Results
         if: always() # Run even if previous steps fail

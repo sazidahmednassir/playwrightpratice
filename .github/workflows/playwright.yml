@@ -110,78 +110,6 @@
 #           from: "${{ secrets.EMAIL_USERNAME }}"
 
 # only it is working as expected
-# name: Playwright Tests with Summary Report
-
-# on:
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#     branches:
-#       - main
-#   schedule:
-#     - cron: "0 0 * * *" # Run every midnight UTC
-
-# jobs:
-#   test:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v4
-
-#       - name: Setup Node.js
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: 18
-
-#       - name: Install dependencies
-#         run: npm ci
-
-#       - name: Install Playwright browsers
-#         run: npx playwright install --with-deps
-
-#       - name: Run Playwright Tests and Save Results
-#         run: npx playwright test --reporter=json > test-results.json
-
-#       - name: Parse Test Results
-#         run: |
-#           TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
-#           PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
-#           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
-#           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
-
-#           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
-#           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
-#           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
-#           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-
-#       - name: Send Email with Test Results
-#         uses: dawidd6/action-send-mail@v3
-#         with:
-#           server_address: smtp.gmail.com
-#           server_port: 465
-#           username: ${{ secrets.EMAIL_USERNAME }}
-#           password: ${{ secrets.EMAIL_PASSWORD }}
-#           subject: "Playwright Test Results"
-#           body: |
-#             ✅ **Test Run Summary:**
-
-#             - ✅ Passed: ${{ env.PASSED_TESTS }}
-#             - ❌ Failed: ${{ env.FAILED_TESTS }}
-#             - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
-#             - 📊 Total: ${{ env.TOTAL_TESTS }}
-
-#             📌 **Run Details:**
-#             - Repository: ${{ github.repository }}
-#             - Branch: ${{ github.ref_name }}
-#             - Commit: ${{ github.sha }}
-#             - Workflow Run: ${{ github.run_id }}
-#             - [View Full GitHub Actions Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-#           to: "sazidahmednassir@gmail.com"
-#           from: ${{ secrets.EMAIL_USERNAME }}
-
 name: Playwright Tests with Summary Report
 
 on:
@@ -214,35 +142,21 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright Tests and Save Results
-        run: |
-          npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
-        continue-on-error: true # Ensure next steps run even if tests fail
+        run: npx playwright test --reporter=json > test-results.json
 
-      - name: Parse Test Results (Linux-Compatible)
+      - name: Parse Test Results
         run: |
-          # Total test count
           TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
           PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-          # Extract failed test case files only (without specific test case names)
-          FAILED_FILES=$(jq -r '[.suites[].specs[].tests[] | select(.results[].status=="failed") | .file] | unique | join("\n")' test-results.json)
-
-          # Handle empty list of failed files
-          if [ -z "$FAILED_FILES" ]; then
-            FAILED_FILES="No failed test files"
-          fi
-
-          # Save results to GitHub Actions environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-          echo "FAILED_TEST_FILES=$FAILED_FILES" >> $GITHUB_ENV
 
       - name: Send Email with Test Results
-        if: always() # Run even if previous steps fail
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -251,32 +165,19 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Playwright Test Results"
           body: |
-            ✅ **Test Run Summary:**  
+            ✅ **Test Run Summary:**
 
-            - ✅ Passed: ${{ env.PASSED_TESTS }}  
-            - ❌ Failed: ${{ env.FAILED_TESTS }}  
-            - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}  
-            - 📊 Total: ${{ env.TOTAL_TESTS }}  
+            - ✅ Passed: ${{ env.PASSED_TESTS }}
+            - ❌ Failed: ${{ env.FAILED_TESTS }}
+            - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
+            - 📊 Total: ${{ env.TOTAL_TESTS }}
 
-            📌 **Failed Test Files:**  
-            ${{ env.FAILED_TEST_FILES }}  
-
-            📌 **Run Details:**  
-            - Repository: ${{ github.repository }}  
-            - Branch: ${{ github.ref_name }}  
-            - Commit: ${{ github.sha }}  
-            - Workflow Run: ${{ github.run_id }}  
+            📌 **Run Details:**
+            - Repository: ${{ github.repository }}
+            - Branch: ${{ github.ref_name }}
+            - Commit: ${{ github.sha }}
+            - Workflow Run: ${{ github.run_id }}
             - [View Full GitHub Actions Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
           to: "sazidahmednassir@gmail.com"
           from: ${{ secrets.EMAIL_USERNAME }}
-
-      - name: Perform Additional Actions (Even if Tests Fail)
-        if: always() # Ensures it runs regardless of previous step failures
-        run: |
-          echo "Performing additional tasks..."
-          # Add any cleanup or notification steps here
-
-      - name: Fail Workflow if Tests Failed
-        if: env.TEST_FAILED == 'true'
-        run: exit 1

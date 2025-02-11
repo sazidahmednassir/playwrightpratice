@@ -236,7 +236,7 @@ jobs:
           # Extract unique failed test file names
           FAILED_FILES=$(jq -r '[.suites[].specs[] | select(any(.tests[].results[]; .status=="failed")) | .file] | unique | join("\n")' test-results.json)
 
-          # Debugging: Print extracted failed files
+          # Debugging Output
           echo "Extracted failed files:"
           echo "$FAILED_FILES"
 
@@ -251,9 +251,10 @@ jobs:
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
 
-          # Use base64 encoding to handle multi-line variable correctly
-          FAILED_FILES_B64=$(echo "$FAILED_FILES" | base64)
-          echo "FAILED_FILES_LIST=$FAILED_FILES_B64" >> $GITHUB_ENV
+          # Directly save FAILED_FILES (without encoding)
+          echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
+          echo "$FAILED_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Send Email with Test Results
         uses: dawidd6/action-send-mail@v3
@@ -271,7 +272,7 @@ jobs:
             - 📊 Total: ${{ env.TOTAL_TESTS }}
 
             📌 **Failed Test Files:**  
-            $(echo "${{ env.FAILED_FILES_LIST }}" | base64 --decode)
+            ${{ env.FAILED_FILES_LIST }}
 
             📌 **Run Details:**
             - Repository: ${{ github.repository }}

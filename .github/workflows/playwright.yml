@@ -233,10 +233,14 @@ jobs:
           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-          # Extract failed test case file names only (without test case titles)
-          FAILED_FILES=$(jq -r '[.suites[].specs[] | select(.tests[].results[].status=="failed") | .file] | unique | join("\n")' test-results.json)
+          # Extract unique failed test file names
+          FAILED_FILES=$(jq -r '[.suites[].specs[] | select(any(.tests[].results[]; .status=="failed")) | .file] | unique | join("\n")' test-results.json)
 
-          # If there are no failed files, set default message
+          # Debugging: Print extracted failed files
+          echo "Extracted failed files:"
+          echo "$FAILED_FILES"
+
+          # If no failed files found, set default message
           if [ -z "$FAILED_FILES" ]; then
             FAILED_FILES="No failed test files"
           fi
@@ -246,7 +250,10 @@ jobs:
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-          echo "FAILED_FILES_LIST=$FAILED_FILES" >> $GITHUB_ENV
+
+          # Use base64 encoding to handle multi-line variable correctly
+          FAILED_FILES_B64=$(echo "$FAILED_FILES" | base64)
+          echo "FAILED_FILES_LIST=$FAILED_FILES_B64" >> $GITHUB_ENV
 
       - name: Send Email with Test Results
         uses: dawidd6/action-send-mail@v3
@@ -258,14 +265,13 @@ jobs:
           subject: "Playwright Test Results"
           body: |
             ✅ **Test Run Summary:**
-
             - ✅ Passed: ${{ env.PASSED_TESTS }}
             - ❌ Failed: ${{ env.FAILED_TESTS }}
             - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
             - 📊 Total: ${{ env.TOTAL_TESTS }}
 
             📌 **Failed Test Files:**  
-            ${{ env.FAILED_FILES_LIST }}
+            $(echo "${{ env.FAILED_FILES_LIST }}" | base64 --decode)
 
             📌 **Run Details:**
             - Repository: ${{ github.repository }}

@@ -172,6 +172,7 @@ jobs:
           branch: gh-pages
           folder: allure-report # Directory containing the Allure report
           clean: true
+          token: ${{ secrets.GITHUB_TOKEN }} # ✅ Add GitHub token for deployment
 
       - name: Send Email with Allure Report Link
         if: always()
@@ -189,7 +190,7 @@ jobs:
             👉 [Click here to download the Allure report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
             🌐 **View Allure Report Online:**  
-            👉 [Click here to view the Allure report on GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.repository }}/)
+            👉 [Click here to view the Allure report on GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)
 
             📌 **Run Details:**  
             - Repository: ${{ github.repository }}  
@@ -198,4 +199,4 @@ jobs:
             - Workflow Run: ${{ github.run_id }}
 
           to: "sazidahmednassir@gmail.com"
-          from: "${{ secrets.EMAIL_USERNAME }}"
+          from: ${{ secrets.EMAIL_USERNAME }} # ✅ Remove extra quotes

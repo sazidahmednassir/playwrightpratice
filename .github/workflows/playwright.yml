@@ -199,7 +199,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 18 * * *" # 12:00 AM Dhaka time (UTC+6)
+    - cron: "0 18 * * *"
 
 jobs:
   test:
@@ -226,20 +226,31 @@ jobs:
         continue-on-error: true
 
       - name: Process results
-        continue-on-error: true # Continue even if parsing fails
+        continue-on-error: true
         run: |
-          # Safely flatten test results structure
-          FLATTENED=$(jq '[.. | objects | select(.specs? != null)]' test-results.json || echo '[]')
+          # Improved recursive parsing for nested suites
+          FLATTENED=$(jq '[.. | .suites? | select(. != null)]' test-results.json || echo '[]')
 
-          # Extract counts with null safety
-          TOTAL=$(jq 'map(.specs[]?.tests[]?.results | length) | add // 0' <<< "$FLATTENED")
-          PASSED=$(jq '[.[].specs[]?.tests[]?.results[]? | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
-          FAILED=$(jq '[.[].specs[]?.tests[]?.results[]? | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
-          SKIPPED=$(jq '[.[].specs[]?.tests[]?.results[]? | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
+          # 1. Extract counts with deep traversal
+          TOTAL=$(jq 'map(.. | .specs? | .[]? | .tests? | .[]? | .results | length) | add // 0' <<< "$FLATTENED")
+          PASSED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
+          FAILED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
+          SKIPPED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
 
-          # Get failed files with multiple fallbacks
-          FAILED_FILES=$(jq -r '[.[].specs[]? | select(any(.tests[]?.results[]?; .status=="failed")) | .file] | unique | join("\n") // ""' <<< "$FLATTENED")
+          # 2. Get ALL failed files recursively
+          FAILED_FILES=$(jq -r '
+            [.. | .suites? | select(. != null) | .specs? | .[]? |
+            select(.tests? | any(.results? | .[]? | .status == "failed")) |
+            .file // .title // "unknown_file"
+          ] | unique | join("\n")' <<< "$FLATTENED" || echo "")
+
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
+
+          # 3. Debug output
+          echo "=== DEBUG ==="
+          echo "RAW FAILED FILES:"
+          echo "$FAILED_FILES"
+          echo "=============="
 
           # Set environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
@@ -285,7 +296,7 @@ jobs:
             - ⏩ Skipped: ${{ env.SKIPPED_TESTS }}
 
             🔍 **Failed Test Files**
-            ${{ env.FAILED_FILES_LIST }}
+            ${{ join('\n', split(env.FAILED_FILES_LIST, '\n')) }}
 
             📌 **Run Details**
             - Branch: ${{ github.ref_name }}
@@ -297,5 +308,7 @@ jobs:
       - name: Final Status
         if: env.TEST_FAILED == 'true'
         run: |
-          echo "❌ Failing workflow due to test failures"
+          echo "❌ Failing workflow due to ${{ env.FAILED_TESTS }} test failure(s)"
+          echo "Failed files:"
+          echo "${{ env.FAILED_FILES_LIST }}"
           exit 1

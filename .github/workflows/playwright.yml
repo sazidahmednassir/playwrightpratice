@@ -199,7 +199,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "0 18 * * *" # Runs at 12:00 AM Dhaka time (UTC+6)
 
 jobs:
   test:
@@ -222,40 +222,33 @@ jobs:
 
       - name: Run tests
         run: |
-          npx playwright test --reporter=json --workers=2 > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
+          npx playwright test --reporter=json --workers=2 > test-results.json
         continue-on-error: true
 
       - name: Process results
-        continue-on-error: true
         run: |
-          # 1. Get absolute file paths with recursive parent resolution
           FAILED_FILES=$(jq -r '
             def get_file($suite):
               $suite.file // (
                 if $suite.parent then get_file($suite.parent) 
                 else empty end
               );
-            
             [.. | .suites? | objects | .specs[]? |
               select(any(.tests[]?.results[]?; .status == "failed")) |
               get_file(.) // "unknown_file"
             ] | unique | join("\n")' test-results.json 2>/dev/null || echo "")
 
-          # 2. Debug output for verification
           echo "=== FAILED FILES DEBUG ==="
           echo "$FAILED_FILES"
           echo "=========================="
 
-          # 3. Get accurate counts
           TOTAL=$(jq '[.. | .specs[]?.tests[]?.results | length] | add // 0' test-results.json)
           PASSED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "passed")] | length // 0' test-results.json)
           FAILED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "failed")] | length // 0' test-results.json)
           SKIPPED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "skipped")] | length // 0' test-results.json)
 
-          # 4. Set default if empty
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
 
-          # 5. Export environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
@@ -306,8 +299,8 @@ jobs:
           to: sazidahmednassir@gmail.com
           from: ${{ secrets.EMAIL_USERNAME }}
 
-      - name: Final Status
-        if: env.TEST_FAILED == 'true'
+      - name: Fail Workflow if Tests Failed
+        if: env.FAILED_TESTS != '0'
         run: |
           echo "❌ Workflow failed due to ${{ env.FAILED_TESTS }} test failures"
           echo "Detected failed files:"

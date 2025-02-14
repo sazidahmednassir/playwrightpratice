@@ -253,9 +253,9 @@ jobs:
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-          echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
-          echo "$FAILED_FILES" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+
+          # Format failed files list as a Markdown list
+          echo "FAILED_FILES_LIST=- $(echo "$FAILED_FILES" | sed 's/^/- /')" >> $GITHUB_ENV
 
       - name: GitHub Summary
         if: always()
@@ -292,7 +292,7 @@ jobs:
             ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
 
             🔥 **Failed Test Files**:
-            ${{ join('\n- ', split(env.FAILED_FILES_LIST, '\n')) }}
+            ${{ env.FAILED_FILES_LIST }}
 
             📎 View full report: 
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

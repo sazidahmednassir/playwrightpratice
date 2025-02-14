@@ -228,21 +228,32 @@ jobs:
       - name: Process results
         continue-on-error: true
         run: |
+          # Improved JSON parsing with parent file inheritance
           FLATTENED=$(jq '[.. | .suites? | select(. != null)]' test-results.json || echo '[]')
 
+          # Get counts
           TOTAL=$(jq 'map(.. | .specs? | .[]? | .tests? | .[]? | .results | length) | add // 0' <<< "$FLATTENED")
           PASSED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
           FAILED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
           SKIPPED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
 
+          # Get failed files with parent inheritance
           FAILED_FILES=$(jq -r '
-            [.. | .suites? | select(. != null) | .specs? | .[]? |
-            select(.tests? | any(.results? | .[]? | .status == "failed")) |
-            .file // .title // "unknown_file"
+            [.. | .suites? | select(. != null) |
+            .specs[]? | 
+            select(any(.tests[]?.results[]?; .status == "failed")) |
+            .file // (.. | .parent? | .file?) // "unknown_file"
           ] | unique | join("\n")' <<< "$FLATTENED" || echo "")
+
+          # Debug output
+          echo "=== DEBUG OUTPUT ==="
+          echo "Raw failed files:"
+          echo "$FAILED_FILES"
+          echo "===================="
 
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
 
+          # Set environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV

@@ -199,7 +199,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 18 * * *" # Daily at 12:00 AM Dhaka time (UTC+6)
+    - cron: "0 18 * * *"
 
 jobs:
   test:
@@ -222,17 +222,20 @@ jobs:
 
       - name: Run Playwright Tests
         run: |
-          npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
+          # Run all tests even if some fail
+          npx playwright test --reporter=json --workers=2 > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
         continue-on-error: true
 
       - name: Parse Test Results
         run: |
-          TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
-          PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
-          FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
-          SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
+          # Improved JSON parsing for nested suites
+          TOTAL=$(jq '[.. | .suites? | .[] | .specs[].tests[].results | length] | add // 0' test-results.json)
+          PASSED=$(jq '[.. | .suites? | .[] | .specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
+          FAILED=$(jq '[.. | .suites? | .[] | .specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
+          SKIPPED=$(jq '[.. | .suites? | .[] | .specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
 
-          FAILED_FILES=$(jq -r '[.suites[].specs[] | select(any(.tests[].results[]; .status=="failed")) | .file] | unique | join("\n")' test-results.json)
+          # Get ALL failed files (including nested suites)
+          FAILED_FILES=$(jq -r '[.. | .suites? | .[] | .specs[] | select(any(.tests[].results[]; .status=="failed")) | .file] | unique | join("\n")' test-results.json)
 
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed test files"
 
@@ -244,6 +247,7 @@ jobs:
           echo "$FAILED_FILES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      # Keep the rest of the steps (summary, email, etc.) the same
       - name: Create GitHub Summary
         if: always()
         run: |
@@ -266,17 +270,14 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Playwright Tests - ${{ job.status }} (${{ env.PASSED_TESTS }}✅ ${{ env.FAILED_TESTS }}❌)"
+          subject: "Playwright Tests - ${{ job.status }} (${{ env.FAILED_TESTS }} failures)"
           body: |
-            Status: ${{ job.status }}
-            ✅ Passed: ${{ env.PASSED_TESTS }}
-            ❌ Failed: ${{ env.FAILED_TESTS }}
-            ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
+            Failed files detected: ${{ env.FAILED_TESTS }}
 
             Failed Files:
             ${{ env.FAILED_FILES_LIST }}
 
-            [View Full Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            Full report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: "sazidahmednassir@gmail.com"
           from: ${{ secrets.EMAIL_USERNAME }}
 

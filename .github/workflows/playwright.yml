@@ -228,32 +228,27 @@ jobs:
       - name: Process results
         continue-on-error: true
         run: |
-          # Improved JSON parsing with parent file inheritance
-          FLATTENED=$(jq '[.. | .suites? | select(. != null)]' test-results.json || echo '[]')
-
-          # Get counts
-          TOTAL=$(jq 'map(.. | .specs? | .[]? | .tests? | .[]? | .results | length) | add // 0' <<< "$FLATTENED")
-          PASSED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
-          FAILED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
-          SKIPPED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
-
-          # Get failed files with parent inheritance
+          # Recursive file path discovery
           FAILED_FILES=$(jq -r '
-            [.. | .suites? | select(. != null) |
-            .specs[]? | 
-            select(any(.tests[]?.results[]?; .status == "failed")) |
-            .file // (.. | .parent? | .file?) // "unknown_file"
-          ] | unique | join("\n")' <<< "$FLATTENED" || echo "")
+            def get_file($suite):
+              $suite.file // (
+                if $suite.parent then get_file($suite.parent) 
+                else "unknown_file" end
+              );
 
-          # Debug output
-          echo "=== DEBUG OUTPUT ==="
-          echo "Raw failed files:"
-          echo "$FAILED_FILES"
-          echo "===================="
+            [.. | .suites? | select(. != null) | .specs[]? |
+              select(any(.tests[]?.results[]?; .status == "failed")) as $spec |
+              get_file($spec)
+            ] | unique | join("\n")' test-results.json 2>/dev/null || echo "")
+
+          # Get test counts
+          TOTAL=$(jq '[.. | .specs[]?.tests[]?.results | length] | add // 0' test-results.json)
+          PASSED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "passed")] | length // 0' test-results.json)
+          FAILED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "failed")] | length // 0' test-results.json)
+          SKIPPED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "skipped")] | length // 0' test-results.json)
 
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
 
-          # Set environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
@@ -265,23 +260,17 @@ jobs:
       - name: GitHub Summary
         if: always()
         run: |
-          echo "### 🔍 Test Results Overview" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric       | Count |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ✅ Passed    | ${{ env.PASSED_TESTS }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ❌ Failed    | ${{ env.FAILED_TESTS }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ⏩ Skipped   | ${{ env.SKIPPED_TESTS }} |" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed: ${{ env.PASSED_TESTS }}" >> $GITHUB_STEP_SUMMARY
+          echo "❌ Failed: ${{ env.FAILED_TESTS }}" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ Skipped: ${{ env.SKIPPED_TESTS }}" >> $GITHUB_STEP_SUMMARY
 
-          echo "### 🚨 Failed Test Files" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ env.FAILED_TESTS }}" -gt 0 ]; then
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${{ env.FAILED_FILES_LIST }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "All test files passed successfully 🎉" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### Failed Test Files" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ env.FAILED_FILES_LIST }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Email Report
+      - name: Send Email Report
         if: always()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -289,17 +278,23 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Test Results: ${{ env.FAILED_TESTS }} failure(s)"
+          subject: "Playwright Tests: ${{ env.FAILED_TESTS }} Failed (Branch: ${{ github.ref_name }})"
           body: |
-            📊 Test Summary
-            ✅ Passed: ${{ env.PASSED_TESTS }}
-            ❌ Failed: ${{ env.FAILED_TESTS }}
-            ⏩ Skipped: ${{ env.SKIPPED_TESTS }}
+            🚨 **Test Results Alert**
 
-            🔍 Failed Files:
+            📅 Run: ${{ github.workflow }} #${{ github.run_number }}
+            🌿 Branch: ${{ github.ref_name }}
+
+            📊 Summary:
+            - ✅ Passed: ${{ env.PASSED_TESTS }}
+            - ❌ Failed: ${{ env.FAILED_TESTS }}
+            - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
+
+            🔥 Failed Files:
             ${{ env.FAILED_FILES_LIST }}
 
-            📌 Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            📋 Detailed Report:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: sazidahmednassir@gmail.com
           from: ${{ secrets.EMAIL_USERNAME }}
 
@@ -307,6 +302,6 @@ jobs:
         if: env.TEST_FAILED == 'true'
         run: |
           echo "❌ Failing workflow due to ${{ env.FAILED_TESTS }} test failures"
-          echo "Failed files:"
+          echo "Failed files detected:"
           echo "${{ env.FAILED_FILES_LIST }}"
           exit 1

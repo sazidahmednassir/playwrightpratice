@@ -228,16 +228,13 @@ jobs:
       - name: Process results
         continue-on-error: true
         run: |
-          # Improved recursive parsing for nested suites
           FLATTENED=$(jq '[.. | .suites? | select(. != null)]' test-results.json || echo '[]')
 
-          # 1. Extract counts with deep traversal
           TOTAL=$(jq 'map(.. | .specs? | .[]? | .tests? | .[]? | .results | length) | add // 0' <<< "$FLATTENED")
           PASSED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
           FAILED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
           SKIPPED=$(jq '[.[] | .. | .specs? | .[]? | .tests? | .[]? | .results[]? | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
 
-          # 2. Get ALL failed files recursively
           FAILED_FILES=$(jq -r '
             [.. | .suites? | select(. != null) | .specs? | .[]? |
             select(.tests? | any(.results? | .[]? | .status == "failed")) |
@@ -246,13 +243,6 @@ jobs:
 
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
 
-          # 3. Debug output
-          echo "=== DEBUG ==="
-          echo "RAW FAILED FILES:"
-          echo "$FAILED_FILES"
-          echo "=============="
-
-          # Set environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
@@ -288,27 +278,24 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Test Results: ${{ env.FAILED_TESTS }} failure(s) in ${{ github.repository }}"
+          subject: "Test Results: ${{ env.FAILED_TESTS }} failure(s)"
           body: |
-            📊 **Test Summary**
-            - ✅ Passed: ${{ env.PASSED_TESTS }}
-            - ❌ Failed: ${{ env.FAILED_TESTS }}
-            - ⏩ Skipped: ${{ env.SKIPPED_TESTS }}
+            📊 Test Summary
+            ✅ Passed: ${{ env.PASSED_TESTS }}
+            ❌ Failed: ${{ env.FAILED_TESTS }}
+            ⏩ Skipped: ${{ env.SKIPPED_TESTS }}
 
-            🔍 **Failed Test Files**
-            ${{ join('\n', split(env.FAILED_FILES_LIST, '\n')) }}
+            🔍 Failed Files:
+            ${{ env.FAILED_FILES_LIST }}
 
-            📌 **Run Details**
-            - Branch: ${{ github.ref_name }}
-            - Commit: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-            - Full Report: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            📌 Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: sazidahmednassir@gmail.com
           from: ${{ secrets.EMAIL_USERNAME }}
 
       - name: Final Status
         if: env.TEST_FAILED == 'true'
         run: |
-          echo "❌ Failing workflow due to ${{ env.FAILED_TESTS }} test failure(s)"
+          echo "❌ Failing workflow due to ${{ env.FAILED_TESTS }} test failures"
           echo "Failed files:"
           echo "${{ env.FAILED_FILES_LIST }}"
           exit 1

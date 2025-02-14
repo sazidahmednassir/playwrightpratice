@@ -191,7 +191,7 @@
 
 #
 
-name: Playwright Tests with Robust Reporting
+name: Playwright Test Automation
 
 on:
   push:
@@ -199,14 +199,14 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "0 18 * * *" # 12:00 AM Dhaka time (UTC+6)
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -217,54 +217,59 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers
+      - name: Install browsers
         run: npx playwright install --with-deps
 
-    - name: Run Playwright Tests
-      run: |
-        npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
-      continue-on-error: true
+      - name: Run tests
+        run: |
+          npx playwright test --reporter=json --workers=2 > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
+        continue-on-error: true
 
-    - name: Parse Test Results
-      continue-on-error: true  # Continue even if parsing fails
-      run: |
-        # Flatten all test results first
-        FLATTENED=$(jq '[.. | objects | select(.specs? != null)]' test-results.json)
-        
-        # Extract counts using flattened data
-        TOTAL=$(jq 'map(.specs[].tests[].results | length) | add // 0' <<< "$FLATTENED")
-        PASSED=$(jq '[.[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
-        FAILED=$(jq '[.[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
-        SKIPPED=$(jq '[.[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
+      - name: Process results
+        continue-on-error: true # Continue even if parsing fails
+        run: |
+          # Safely flatten test results structure
+          FLATTENED=$(jq '[.. | objects | select(.specs? != null)]' test-results.json || echo '[]')
 
-        # Extract failed files safely
-        FAILED_FILES=$(jq -r '[.[].specs[] | select(any(.tests[].results[]?; .status=="failed")) | .file] | unique | join("\n") // ""' <<< "$FLATTENED")
-        
-        [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed test files detected"
+          # Extract counts with null safety
+          TOTAL=$(jq 'map(.specs[]?.tests[]?.results | length) | add // 0' <<< "$FLATTENED")
+          PASSED=$(jq '[.[].specs[]?.tests[]?.results[]? | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
+          FAILED=$(jq '[.[].specs[]?.tests[]?.results[]? | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
+          SKIPPED=$(jq '[.[].specs[]?.tests[]?.results[]? | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
 
-        # Set environment variables
-        echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
-        echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
-        echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
-        echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-        echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
-        echo "$FAILED_FILES" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+          # Get failed files with multiple fallbacks
+          FAILED_FILES=$(jq -r '[.[].specs[]? | select(any(.tests[]?.results[]?; .status=="failed")) | .file] | unique | join("\n") // ""' <<< "$FLATTENED")
+          [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
 
-      - name: Create GitHub Summary
+          # Set environment variables
+          echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
+          echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
+          echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
+          echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
+          echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
+          echo "$FAILED_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: GitHub Summary
         if: always()
         run: |
-          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Passed: ${{ env.PASSED_TESTS }}" >> $GITHUB_STEP_SUMMARY
-          echo "❌ Failed: ${{ env.FAILED_TESTS }}" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ Skipped: ${{ env.SKIPPED_TESTS }}" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Test Results Overview" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric       | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ✅ Passed    | ${{ env.PASSED_TESTS }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ❌ Failed    | ${{ env.FAILED_TESTS }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⏩ Skipped   | ${{ env.SKIPPED_TESTS }} |" >> $GITHUB_STEP_SUMMARY
 
-          echo "### Failed Test Files" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ env.FAILED_FILES_LIST }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "### 🚨 Failed Test Files" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ env.FAILED_TESTS }}" -gt 0 ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${{ env.FAILED_FILES_LIST }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "All test files passed successfully 🎉" >> $GITHUB_STEP_SUMMARY
+          fi
 
-      - name: Send Email Report
+      - name: Email Report
         if: always()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -272,15 +277,25 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Test Results: ${{ env.FAILED_TESTS }} failures"
+          subject: "Test Results: ${{ env.FAILED_TESTS }} failure(s) in ${{ github.repository }}"
           body: |
-            Failed files:
+            📊 **Test Summary**
+            - ✅ Passed: ${{ env.PASSED_TESTS }}
+            - ❌ Failed: ${{ env.FAILED_TESTS }}
+            - ⏩ Skipped: ${{ env.SKIPPED_TESTS }}
+
+            🔍 **Failed Test Files**
             ${{ env.FAILED_FILES_LIST }}
 
-            Full report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            📌 **Run Details**
+            - Branch: ${{ github.ref_name }}
+            - Commit: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            - Full Report: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           to: sazidahmednassir@gmail.com
           from: ${{ secrets.EMAIL_USERNAME }}
 
-      - name: Final Workflow Status
+      - name: Final Status
         if: env.TEST_FAILED == 'true'
-        run: exit 1
+        run: |
+          echo "❌ Failing workflow due to test failures"
+          exit 1

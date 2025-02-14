@@ -220,30 +220,36 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run Playwright Tests
-        run: |
-          npx playwright test --reporter=json --shard=1/1 > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
-        continue-on-error: true
+    - name: Run Playwright Tests
+      run: |
+        npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
+      continue-on-error: true
 
-      - name: Parse Test Results
-        continue-on-error: true # Continue even if parsing fails
-        run: |
-          # Safe JSON parsing with null checks
-          TOTAL=$(jq '[.. | .suites? | select(. != null) | .specs[]?.tests[]?.results | length] | add // 0' test-results.json)
-          PASSED=$(jq '[.. | .suites? | select(. != null) | .specs[]?.tests[]?.results[]? | select(.status=="passed")] | length // 0' test-results.json)
-          FAILED=$(jq '[.. | .suites? | select(. != null) | .specs[]?.tests[]?.results[]? | select(.status=="failed")] | length // 0' test-results.json)
-          SKIPPED=$(jq '[.. | .suites? | select(. != null) | .specs[]?.tests[]?.results[]? | select(.status=="skipped")] | length // 0' test-results.json)
+    - name: Parse Test Results
+      continue-on-error: true  # Continue even if parsing fails
+      run: |
+        # Flatten all test results first
+        FLATTENED=$(jq '[.. | objects | select(.specs? != null)]' test-results.json)
+        
+        # Extract counts using flattened data
+        TOTAL=$(jq 'map(.specs[].tests[].results | length) | add // 0' <<< "$FLATTENED")
+        PASSED=$(jq '[.[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' <<< "$FLATTENED")
+        FAILED=$(jq '[.[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' <<< "$FLATTENED")
+        SKIPPED=$(jq '[.[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' <<< "$FLATTENED")
 
-          # Safe failed files extraction
-          FAILED_FILES=$(jq -r '[.. | .suites? | select(. != null) | .specs[]? | select(any(.tests[]?.results[]?; .status=="failed")) | .file] | unique | join("\n") // "No failed files"' test-results.json)
+        # Extract failed files safely
+        FAILED_FILES=$(jq -r '[.[].specs[] | select(any(.tests[].results[]?; .status=="failed")) | .file] | unique | join("\n") // ""' <<< "$FLATTENED")
+        
+        [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed test files detected"
 
-          echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
-          echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
-          echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
-          echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-          echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
-          echo "$FAILED_FILES" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+        # Set environment variables
+        echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
+        echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
+        echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
+        echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
+        echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
+        echo "$FAILED_FILES" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
       - name: Create GitHub Summary
         if: always()

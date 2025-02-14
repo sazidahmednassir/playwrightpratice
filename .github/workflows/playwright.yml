@@ -222,11 +222,12 @@ jobs:
 
       - name: Run tests
         run: |
-          npx playwright test --reporter=json --workers=2 > test-results.json
+          npx playwright test --reporter=json --workers=2 > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
         continue-on-error: true
 
       - name: Process results
         run: |
+          # Get failed files with full path resolution
           FAILED_FILES=$(jq -r '
             def get_file($suite):
               $suite.file // (
@@ -238,10 +239,7 @@ jobs:
               get_file(.) // "unknown_file"
             ] | unique | join("\n")' test-results.json 2>/dev/null || echo "")
 
-          echo "=== FAILED FILES DEBUG ==="
-          echo "$FAILED_FILES"
-          echo "=========================="
-
+          # Get test counts
           TOTAL=$(jq '[.. | .specs[]?.tests[]?.results | length] | add // 0' test-results.json)
           PASSED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "passed")] | length // 0' test-results.json)
           FAILED=$(jq '[.. | .specs[]?.tests[]?.results[]? | select(.status == "failed")] | length // 0' test-results.json)
@@ -249,13 +247,17 @@ jobs:
 
           [ -z "$FAILED_FILES" ] && FAILED_FILES="No failed files detected"
 
+          # Format as markdown list
+          FORMATTED_FILES=$(echo "$FAILED_FILES" | sed 's/^/- /')
+
+          # Set environment variables
           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-
-          # Format failed files list as a Markdown list
-          echo "FAILED_FILES_LIST=- $(echo "$FAILED_FILES" | sed 's/^/- /')" >> $GITHUB_ENV
+          echo "FAILED_FILES_LIST<<EOF" >> $GITHUB_ENV
+          echo "$FORMATTED_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: GitHub Summary
         if: always()
@@ -267,9 +269,7 @@ jobs:
 
           echo "### Failed Test Files" >> $GITHUB_STEP_SUMMARY
           if [ "${{ env.FAILED_TESTS }}" -gt 0 ]; then
-            echo '```' >> $GITHUB_STEP_SUMMARY
             echo "${{ env.FAILED_FILES_LIST }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "All tests passed successfully 🎉" >> $GITHUB_STEP_SUMMARY
           fi
@@ -300,7 +300,7 @@ jobs:
           from: ${{ secrets.EMAIL_USERNAME }}
 
       - name: Fail Workflow if Tests Failed
-        if: env.FAILED_TESTS != '0'
+        if: env.TEST_FAILED == 'true'
         run: |
           echo "❌ Workflow failed due to ${{ env.FAILED_TESTS }} test failures"
           echo "Detected failed files:"

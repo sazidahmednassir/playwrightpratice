@@ -280,7 +280,9 @@ jobs:
           node-version: 18
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm install puppeteer  # ✅ Fix: Install Puppeteer properly
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -290,7 +292,7 @@ jobs:
         continue-on-error: true # Ensure workflow continues even if tests fail
 
       - name: Install Allure Command Line Tool
-        run: npm install -g allure-commandline puppeteer
+        run: npm install -g allure-commandline
 
       - name: Generate Allure Report
         run: |

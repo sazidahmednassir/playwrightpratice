@@ -285,7 +285,7 @@ jobs:
         run: npx playwright install
 
       - name: Run Tests
-        run: npm test
+        run: npx playwright test
 
       - name: Generate Allure Report (Single HTML File)
         run: |

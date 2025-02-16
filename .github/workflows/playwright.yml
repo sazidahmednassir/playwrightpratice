@@ -210,9 +210,10 @@ jobs:
           node-version: "14"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Clean npm cache and reinstall dependencies
         run: |
-          npm ci || (cat /home/runner/.npm/_logs/*debug.log && exit 1)
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Install Playwright
         run: npx playwright install

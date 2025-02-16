@@ -1,9 +1,0 @@
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NzVlN2RiMmUyYjU0NDNiMWZmM2M5ODMiLCJ1c2VyRW1haWwiOiJzYXppZGFobWVkbngyM0B5b3BtYWlsLmNvbSIsInVzZXJNb2JpbGUiOjE2Mjg1NjMyNjAsInVzZXJSb2xlIjoiY3VzdG9tZXIiLCJpYXQiOjE3MzU1MzgwMjEsImV4cCI6MTc2NzA5NTYyMX0.wnTzihKVwpAy1pQrThB8q8dwXvaH-tp3lnGojPZomiQ
-[
-  'ADIDAS ORIGINAL',
-  'IPHONE 13 PRO',
-  'qwerty',
-  'Banarsi Saree',
-  'LG Refrigerator',
-  'LG Refrigerator'
-]

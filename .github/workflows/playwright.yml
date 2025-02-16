@@ -286,7 +286,7 @@ jobs:
 
       - name: Run Playwright Tests
         run: |
-          npx playwright test || true  # Prevents termination on test failure
+          npx playwright test || true  # Prevent termination on test failure
 
       - name: Clean previous Allure reports
         run: rm -rf allure-results allure-report allure-history
@@ -299,10 +299,13 @@ jobs:
       - name: Convert Allure Report to Single HTML File
         run: |
           zip -r allure-report.zip allure-report
-          mv allure-report.zip allure-report.zip.txt  # Rename to bypass Gmail security
 
-      - name: Send Allure Report via Email
-        if: always()
+      - name: Upload Allure Report to Transfer.sh
+        run: |
+          REPORT_URL=$(curl --upload-file allure-report.zip https://transfer.sh/allure-report.zip)
+          echo "REPORT_URL=$REPORT_URL" >> $GITHUB_ENV
+
+      - name: Send Allure Report Download Link via Email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -313,15 +316,11 @@ jobs:
           body: |
             Hello,
 
-            The latest test execution report is attached.
+            The latest test execution report is available for download:
 
-            **Important:** The file is renamed to `allure-report.zip.txt`.  
-            - Download the file.
-            - Rename it back to `allure-report.zip`.
-            - Extract and open `index.html`.
+            🔗 [Download Allure Report](${{ env.REPORT_URL }})
 
             Regards,  
             CI/CD Pipeline
           to: ${{ secrets.EMAIL_RECIPIENT }}
           from: ${{ secrets.EMAIL_USERNAME }}
-          attachments: allure-report.zip.txt

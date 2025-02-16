@@ -110,81 +110,165 @@
 #           from: "${{ secrets.EMAIL_USERNAME }}"
 
 # only it is working as expected
-name: Playwright Tests with Summary Report
+# name: Playwright Tests with Summary Report
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
+#   schedule:
+#     - cron: "0 0 * * *" # Run every midnight UTC
+
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+
+#       - name: Install dependencies
+#         run: npm ci
+
+#       - name: Install Playwright browsers
+#         run: npx playwright install --with-deps
+
+#       - name: Run Playwright Tests and Save Results
+#         run: |
+#           npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
+#         continue-on-error: true # Allow workflow to continue even if tests fail
+
+#       - name: Parse Test Results
+#         run: |
+#           TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
+#           PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
+#           FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
+#           SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
+
+#           echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
+#           echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
+#           echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
+#           echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
+
+#       - name: Send Email with Test Results
+#         uses: dawidd6/action-send-mail@v3
+#         with:
+#           server_address: smtp.gmail.com
+#           server_port: 465
+#           username: ${{ secrets.EMAIL_USERNAME }}
+#           password: ${{ secrets.EMAIL_PASSWORD }}
+#           subject: "Playwright Test Results"
+#           body: |
+#             ✅ **Test Run Summary:**
+
+#             - ✅ Passed: ${{ env.PASSED_TESTS }}
+#             - ❌ Failed: ${{ env.FAILED_TESTS }}
+#             - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
+#             - 📊 Total: ${{ env.TOTAL_TESTS }}
+
+#             📌 **Run Details:**
+#             - Repository: ${{ github.repository }}
+#             - Branch: ${{ github.ref_name }}
+#             - Commit: ${{ github.sha }}
+#             - Workflow Run: ${{ github.run_id }}
+#             - [View Full GitHub Actions Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+#           to: "sazidahmednassir@gmail.com"
+#           from: ${{ secrets.EMAIL_USERNAME }}
+
+#       - name: Fail Workflow if Tests Failed
+#         if: env.TEST_FAILED == 'true'
+#         run: echo "Test execution had failures, marking job as failed." && exit 1
+#         continue-on-error: true
+
+name: ci
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
-  schedule:
-    - cron: "0 0 * * *" # Run every midnight UTC
+    branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v2
         with:
-          node-version: 18
+          node-version: "14"
+          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npx playwright install
+      - run: npm test
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      - uses: actions/upload-artifact@master
+        with:
+          name: allure-results
+          path: allure-results
+          retention-days: 20
 
-      - name: Run Playwright Tests and Save Results
+      - name: Get Allure history
+        uses: actions/checkout@v2
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Generate Allure Report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        id: allure-report
+        with:
+          allure_results: allure-results
+          gh_pages: gh-pages
+          allure_report: allure-report
+          allure_history: allure-history
+          keep_reports: 20
+
+      - name: Deploy report to Github Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v2
+        env:
+          PERSONAL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISH_BRANCH: gh-pages
+          PUBLISH_DIR: allure-history
+
+      - name: Zip Allure Report
+        if: always()
         run: |
-          npx playwright test --reporter=json > test-results.json || echo "TEST_FAILED=true" >> $GITHUB_ENV
-        continue-on-error: true # Allow workflow to continue even if tests fail
+          zip -r allure-report.zip allure-history
+          echo "ALLURE_ZIP=allure-report.zip" >> $GITHUB_ENV
 
-      - name: Parse Test Results
-        run: |
-          TOTAL=$(jq '[.suites[].specs[].tests[].results | length] | add // 0' test-results.json)
-          PASSED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="passed")] | length // 0' test-results.json)
-          FAILED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="failed")] | length // 0' test-results.json)
-          SKIPPED=$(jq '[.suites[].specs[].tests[].results[] | select(.status=="skipped")] | length // 0' test-results.json)
-
-          echo "TOTAL_TESTS=$TOTAL" >> $GITHUB_ENV
-          echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
-          echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
-          echo "SKIPPED_TESTS=$SKIPPED" >> $GITHUB_ENV
-
-      - name: Send Email with Test Results
+      - name: Send Allure Report via Email
+        if: always()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Playwright Test Results"
+          subject: "Playwright Test Results - Allure Report"
           body: |
-            ✅ **Test Run Summary:**
+            📊 **Test Report Summary**
 
-            - ✅ Passed: ${{ env.PASSED_TESTS }}
-            - ❌ Failed: ${{ env.FAILED_TESTS }}
-            - ⚠️ Skipped: ${{ env.SKIPPED_TESTS }}
-            - 📊 Total: ${{ env.TOTAL_TESTS }}
+            ✅ Playwright tests have been executed successfully.
+            🔗 View full Allure Report: [Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)
 
-            📌 **Run Details:**
-            - Repository: ${{ github.repository }}
-            - Branch: ${{ github.ref_name }}
-            - Commit: ${{ github.sha }}
-            - Workflow Run: ${{ github.run_id }}
-            - [View Full GitHub Actions Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-          to: "sazidahmednassir@gmail.com"
+            📎 The full report is attached.
+          to: sazidahmednassir@gmail.com
           from: ${{ secrets.EMAIL_USERNAME }}
-
-      - name: Fail Workflow if Tests Failed
-        if: env.TEST_FAILED == 'true'
-        run: echo "Test execution had failures, marking job as failed." && exit 1
-        continue-on-error: true
+          attachments: allure-report.zip

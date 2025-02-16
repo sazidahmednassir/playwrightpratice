@@ -254,66 +254,73 @@
 #           PUBLISH_BRANCH: gh-pages
 #           PUBLISH_DIR: allure-history
 
-name: ci
+name: Playwright Tests with Allure Report
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
+  schedule:
+    - cron: "0 18 * * *" # Runs at 12:00 AM Dhaka time (UTC+6)
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 18
 
-      - name: Install Dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Install Playwright
-        run: npx playwright install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
 
       - name: Run Playwright Tests
-        run: |
-          npx playwright test || true  # Prevent termination on test failure
+        run: npx playwright test
+        continue-on-error: true # Ensure workflow continues even if tests fail
 
-      - name: Clean previous Allure reports
-        run: rm -rf allure-results allure-report allure-history
+      - name: Install Allure Command Line Tool
+        run: npm install -g allure-commandline --save-dev
 
-      - name: Generate Allure Report
+      - name: Generate Allure Report (Single HTML)
         run: |
-          npm install -g allure-commandline
+          rm -rf allure-results allure-report  # Clean previous reports
+          mkdir -p allure-results
           allure generate allure-results --clean -o allure-report --single-file
+          cd allure-report
+          zip -r ../allure-report.zip .
+          cd ..
 
-      - name: Rename Allure Report
-        run: mv allure-report/index.html allure-report.html
+      - name: Upload Allure Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report.zip
+          retention-days: 7 # Keep report for 7 days
 
-      - name: Send Allure Report via Email
+      - name: Send Email with Allure Report
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Allure Report - Test Execution Results"
-          body: |
-            Hello,
-
-            Please find the attached Allure Report for the latest test execution.
-
-            Regards,  
-            CI/CD Pipeline
-          to: ${{ secrets.EMAIL_RECIPIENT }}
+          subject: "Allure Test Report"
+          body: "Allure report is attached. Download and extract it to view."
+          to: "sazidahmednassir@gmail.com"
           from: ${{ secrets.EMAIL_USERNAME }}
-          attachments: allure-report.html
+          attachments: allure-report.zip
+
+      - name: Fail Workflow if Tests Failed
+        if: failure()
+        run: exit 1

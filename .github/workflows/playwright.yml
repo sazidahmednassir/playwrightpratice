@@ -603,8 +603,8 @@ jobs:
           body: |
             The Allure report is too large to attach. Download it from:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            After downloading, unzip allure-report.zip to get the allure-report folder.
-            Run 'npx http-server' in the allure-report folder and open http://localhost:8080/index.html to view.
+            After downloading, unzip allure-report.zip two times to get the allure-report folder.
+            Run 'npx http-server' in the allure-report folder and open http://127.0.0.1:8080 to view.
           to: "sazidahmednassir@gmail.com" # Replace with your email
           from: ${{ secrets.EMAIL_USERNAME }}
 

@@ -344,7 +344,79 @@
 #         if: failure()
 #         run: exit 1
 
-name: Playwright Tests with Allure Report
+# name: Playwright Tests with Allure Report with github server (Not as expected)
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
+#   schedule:
+#     - cron: "0 18 * * *" # Runs at 12:00 AM Dhaka time (UTC+6)
+
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+
+#       - name: Install Dependencies
+#         run: npm ci
+
+#       - name: Install Playwright browsers
+#         run: npx playwright install --with-deps
+
+#       - name: Run Playwright Tests
+#         run: npx playwright test
+#         continue-on-error: true
+
+#       - name: Setup Java
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: "11"
+#           distribution: "temurin"
+
+#       - name: Install Allure Command Line Tool
+#         run: npm install -g allure-commandline
+
+#       - name: Generate Allure Report
+#         run: |
+#           allure generate allure-results --clean -o allure-report || echo "Report generation failed"
+#         continue-on-error: true
+
+#       - name: Deploy to GitHub Pages
+#         uses: peaceiris/actions-gh-pages@v4
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ./allure-report
+#           destination_dir: ./reports/${{ github.run_id }}
+
+#       - name: Send Email with Report Link
+#         uses: dawidd6/action-send-mail@v3
+#         with:
+#           server_address: smtp.gmail.com
+#           server_port: 465
+#           username: ${{ secrets.EMAIL_USERNAME }}
+#           password: ${{ secrets.EMAIL_PASSWORD }}
+#           subject: "Allure Test Report"
+#           body: "View the Allure report online at: ${{ github.server_url }}/${{ github.repository }}/tree/gh-pages/reports/${{ github.run_id }}/index.html"
+#           to: "sazidahmednassir@gmail.com" # Replace with your email
+#           from: ${{ secrets.EMAIL_USERNAME }}
+
+#       - name: Fail Workflow if Tests Failed
+#         if: failure()
+#         run: exit 1
+
+name: Playwright Tests with Allure Report on local server
 
 on:
   push:
@@ -393,12 +465,23 @@ jobs:
           allure generate allure-results --clean -o allure-report || echo "Report generation failed"
         continue-on-error: true
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Check Report Contents
+        run: |
+          ls -la allure-report || echo "Report directory empty"
+          ls -la allure-report/data || echo "No data folder found"
+        continue-on-error: true
+
+      - name: Compress Allure Report
+        run: zip -r allure-report.zip allure-report
+        continue-on-error: true
+
+      - name: Upload Allure Report Artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./allure-report
-          destination_dir: ./reports/${{ github.run_id }}
+          name: allure-report
+          path: allure-report.zip
+          retention-days: 7
+        continue-on-error: true
 
       - name: Send Email with Report Link
         uses: dawidd6/action-send-mail@v3
@@ -408,7 +491,7 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Test Report"
-          body: "View the Allure report online at: ${{ github.server_url }}/${{ github.repository }}/tree/gh-pages/reports/${{ github.run_id }}/index.html"
+          body: "The Allure report is too large to attach. Download it from: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} and extract to view index.html locally with a server (e.g., 'npx http-server')."
           to: "sazidahmednassir@gmail.com" # Replace with your email
           from: ${{ secrets.EMAIL_USERNAME }}
 

@@ -416,7 +416,7 @@
 #         if: failure()
 #         run: exit 1
 
-name: Playwright Tests with Allure Report local server
+name: Playwright Tests with Allure Report
 
 on:
   push:
@@ -465,8 +465,22 @@ jobs:
           allure generate allure-results --clean -o allure-report || echo "Report generation failed"
         continue-on-error: true
 
+      - name: Verify Allure Report Contents
+        run: |
+          echo "Listing allure-report contents:"
+          ls -la allure-report || echo "Report directory empty"
+          ls -la allure-report/data || echo "No data folder found"
+          find allure-report -name "*.zip" -exec echo "Unexpected ZIP found: {}" \; || echo "No nested ZIPs detected"
+        continue-on-error: true
+
       - name: Compress Allure Report
-        run: zip -r allure-report.zip allure-report
+        run: |
+          # Ensure we zip the contents of allure-report, not the folder itself
+          cd allure-report
+          zip -r ../allure-report.zip .
+          cd ..
+          echo "ZIP created at: $(pwd)/allure-report.zip"
+          ls -lh allure-report.zip
         continue-on-error: true
 
       - name: Upload Allure Report Artifact
@@ -485,6 +499,14 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Test Report"
-          body: "The Allure report is too large to attach. Download it from: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body: |
+            The Allure report is too large to attach. Download it from:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            After downloading, unzip allure-report.zip and run 'npx http-server' in the allure-report folder,
+            then open http://localhost:8080/index.html in your browser to view the report.
           to: "sazidahmednassir@gmail.com" # Replace with your email
           from: ${{ secrets.EMAIL_USERNAME }}
+
+      - name: Fail Workflow if Tests Failed
+        if: failure()
+        run: exit 1

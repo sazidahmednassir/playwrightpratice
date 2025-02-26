@@ -366,8 +366,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Playwright
-        run: npx playwright install
+      - name: Install Playwright browsers
+        run: npx playwright install-deps
 
       - name: Run tests
         run: npx playwright test

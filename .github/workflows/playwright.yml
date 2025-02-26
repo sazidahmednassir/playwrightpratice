@@ -393,17 +393,12 @@ jobs:
           allure generate allure-results --clean -o allure-report || echo "Report generation failed"
         continue-on-error: true
 
-      - name: Compress Allure Report
-        run: zip -r allure-report.zip allure-report
-        continue-on-error: true
-
-      - name: Upload Allure Report Artifact
-        uses: actions/upload-artifact@v4
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          name: allure-report
-          path: allure-report.zip
-          retention-days: 7
-        continue-on-error: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: ./reports/${{ github.run_id }}
 
       - name: Send Email with Report Link
         uses: dawidd6/action-send-mail@v3
@@ -413,6 +408,10 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Test Report"
-          body: "The Allure report is too large to attach. Download it from: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body: "View the Allure report online at: ${{ github.server_url }}/${{ github.repository }}/tree/gh-pages/reports/${{ github.run_id }}/index.html"
           to: "sazidahmednassir@gmail.com" # Replace with your email
           from: ${{ secrets.EMAIL_USERNAME }}
+
+      - name: Fail Workflow if Tests Failed
+        if: failure()
+        run: exit 1

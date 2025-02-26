@@ -397,7 +397,15 @@ jobs:
         run: zip -r allure-report.zip allure-report
         continue-on-error: true
 
-      - name: Send Email with Allure Report
+      - name: Upload Allure Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report.zip
+          retention-days: 7
+        continue-on-error: true
+
+      - name: Send Email with Report Link
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -405,11 +413,6 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Test Report"
-          body: "Attached is the Allure report as a ZIP file. Extract and open index.html to view."
+          body: "The Allure report is too large to attach. Download it from: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           to: "sazidahmednassir@gmail.com" # Replace with your email
           from: ${{ secrets.EMAIL_USERNAME }}
-          attachments: allure-report.zip
-
-      - name: Fail Workflow if Tests Failed
-        if: failure()
-        run: exit 1

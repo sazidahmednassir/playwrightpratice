@@ -511,7 +511,7 @@
 #         if: failure()
 #         run: exit 1
 
-name: Playwright Tests with Allure Report
+name: Playwright Tests with Allure Report with local server
 
 on:
   push:

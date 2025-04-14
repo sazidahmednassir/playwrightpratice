@@ -666,8 +666,15 @@ jobs:
           allure generate --single-file allure-results --clean -o allure-report || echo "Report generation failed"
         continue-on-error: true
 
-      # Step 8: Send Email with Allure Report as Attachment
-      - name: Send Email with Allure Report
+      # Step 8: Upload Allure Report as Artifact
+      - name: Upload Allure Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/index.html
+
+      # Step 9: Send Email with Allure Report Link
+      - name: Send Email with Allure Report Link
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -675,12 +682,13 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Allure Test Report"
-          body: "The Allure report is attached as a single HTML file. Open it in your browser to view the test results."
+          body: |
+            The Allure report has been generated. You can download it from the following link:
+            👉 [Download Allure Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           to: "sazidahmednassir@gmail.com"
           from: ${{ secrets.EMAIL_USERNAME }}
-          attachments: allure-report/index.html
 
-      # Step 9: Fail Workflow if Tests Failed
+      # Step 10: Fail Workflow if Tests Failed
       - name: Fail Workflow if Tests Failed
         if: failure()
         run: exit 1
